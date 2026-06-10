@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SENTINEL — Engineering Decision Record</title>
+<style>
+  :root{
+    --ink:#1b2038; --muted:#5a6478; --line:#e3e0ea; --violet:#6d5efc; --violet2:#b07cff;
+    --green:#0fb27f; --amber:#d97a06; --red:#e2483d; --chip:#f3f0fb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ink);font-size:10.6pt;line-height:1.5;}
+  h1,h2,h3{line-height:1.18;font-weight:800;letter-spacing:-.01em}
+  p{margin:.45em 0}
+  a{color:var(--violet);text-decoration:none}
+  code{font-family:'SFMono-Regular',Consolas,monospace;background:#f4f2f8;padding:1px 5px;border-radius:4px;font-size:.9em}
+
+  /* Cover */
+  .cover{background:linear-gradient(150deg,#6d5efc 0%,#8a5cf6 45%,#b07cff 100%);
+    color:#fff;border-radius:18px;padding:54px 46px;margin-bottom:30px;page-break-after:always;
+    min-height:880px;display:flex;flex-direction:column;justify-content:space-between}
+  .cover .badge{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+    border-radius:999px;padding:6px 14px;font-size:10pt;font-weight:700;letter-spacing:.04em}
+  .cover h1{font-size:42pt;margin:18px 0 6px}
+  .cover .tag{font-size:15pt;opacity:.95;font-weight:600}
+  .cover .lead{font-size:12pt;opacity:.95;max-width:560px;margin-top:18px;line-height:1.55}
+  .cover .meta{font-size:10.5pt;opacity:.9}
+  .cover .meta b{font-weight:800}
+  .cover .pills span{display:inline-block;background:rgba(255,255,255,.16);border-radius:8px;padding:5px 11px;
+    font-size:9.2pt;margin:4px 6px 0 0;font-weight:600}
+
+  h2.section{font-size:18pt;margin:26px 0 4px;padding-bottom:6px;border-bottom:3px solid var(--violet);
+    page-break-after:avoid}
+  .kicker{color:var(--violet);font-weight:800;font-size:9pt;letter-spacing:.12em;text-transform:uppercase}
+
+  /* Decision card */
+  .dec{border:1px solid var(--line);border-left:5px solid var(--violet);border-radius:10px;
+    padding:14px 16px;margin:14px 0;page-break-inside:avoid;background:#fcfbff}
+  .dec h3{font-size:12.5pt;margin:0 0 2px}
+  .dec .ctx{color:var(--muted);font-size:9.6pt;margin:0 0 8px}
+  .dec .decision{background:var(--chip);border-radius:8px;padding:8px 11px;font-size:10pt;margin:8px 0}
+  .dec .decision b{color:var(--violet)}
+  .grid2{display:flex;gap:14px;margin-top:6px}
+  .grid2 .col{flex:1}
+  .lbl{font-size:8.6pt;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+  .lbl.pro{color:var(--green)} .lbl.con{color:var(--amber)}
+  ul.tight{margin:0;padding-left:16px} ul.tight li{margin:2px 0;font-size:9.6pt}
+  .helps{margin-top:9px;font-size:9.7pt;border-top:1px dashed var(--line);padding-top:7px}
+  .helps b{color:var(--violet)}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:9.6pt;page-break-inside:avoid}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+  th{background:#f3f0fb;font-weight:800;color:var(--ink)}
+  .small{font-size:9.2pt;color:var(--muted)}
+  .pagebreak{page-break-before:always}
+  .note{background:#f7f5ff;border:1px solid #e6e0fb;border-radius:8px;padding:10px 12px;font-size:9.6pt;margin:10px 0}
+</style>
+</head>
+<body>
+
+<!-- ───────────────────────── COVER ───────────────────────── -->
+<section class="cover">
+  <div>
+    <span class="badge">🛡 Engineering Decision Record</span>
+    <h1>SENTINEL</h1>
+    <div class="tag">AI Prompt Security Gateway</div>
+    <p class="lead">A browser-native security layer that detects and redacts sensitive data and
+      prompt-injection attacks before they reach ChatGPT, Claude, or Gemini — in under 5&nbsp;ms,
+      local-first, with nothing stored but anonymized metadata.</p>
+    <div class="pills">
+      <span>Chrome Manifest V3</span><span>Vanilla-JS engine</span><span>Trie + Aho-Corasick</span>
+      <span>React + Vite</span><span>FastAPI + Postgres</span><span>91 automated tests</span>
+      <span>CI/CD on GitHub</span>
+    </div>
+  </div>
+  <div class="meta">
+    <p><b>Document:</b> Build decisions, trade-offs &amp; rationale — from scratch to deployment</p>
+    <p><b>Author:</b> alirizzzv &nbsp;·&nbsp; <b>Repository:</b> github.com/alirizzzv/SENTINEL
+       &nbsp;·&nbsp; <b>Live:</b> alirizzzv.github.io/SENTINEL</p>
+    <p><b>Purpose of this doc:</b> a software-engineer–facing record of every significant
+       decision and what it demonstrates.</p>
+  </div>
+</section>
+
+<!-- ───────────────────────── 1. PURPOSE ───────────────────────── -->
+<h2 class="section">1 · Purpose &amp; problem</h2>
+<p>People paste API keys, credentials, customer PII, and internal documents into LLMs every day to
+   "just debug this" or "clean up this paragraph." The instant they hit send, that data lives on a
+   third party's servers — potentially used for training, potentially exposed in a breach,
+   permanently outside their control. Existing enterprise DLP tooling is expensive, IT-gated, and
+   <i>reactive</i> — it audits <i>after</i> the leak.</p>
+<p><b>SENTINEL's thesis:</b> interception must happen <i>before</i> the prompt is sent, must run
+   locally so the privacy tool isn't itself a privacy risk, and must be an <i>education moment</i>
+   (warn &amp; let the user decide) rather than a hard block that trains people to disable it.</p>
+<table>
+  <tr><th>Who it's for</th><th>What it does</th></tr>
+  <tr>
+    <td>The accidental insider — an employee using AI tools who doesn't realize they're leaking
+        data. Secondary: IT admins wanting team-level visibility (opt-in).</td>
+    <td>Intercepts every send, scans in &lt;5&nbsp;ms, scores risk 0–100, shows what was found
+        ranked by severity, and offers Redact / Send&nbsp;Anyway / Cancel.</td>
+  </tr>
+</table>
+
+<!-- ───────────────────────── 2. OVERVIEW ───────────────────────── -->
+<h2 class="section">2 · System at a glance</h2>
+<p>Three cooperating parts, all local by default:</p>
+<table>
+  <tr><th>Layer</th><th>Responsibility</th><th>Tech</th></tr>
+  <tr><td><b>Detection engine</b></td><td>Turn a string into a risk verdict + redacted text</td><td>Vanilla JS (ES modules)</td></tr>
+  <tr><td><b>Extension</b></td><td>Intercept the send on each LLM site; show the modal; store metadata</td><td>Manifest V3 content script + service worker + IndexedDB</td></tr>
+  <tr><td><b>Surfaces</b></td><td>Popup quick-stats; full analytics dashboard</td><td>React + Vite + Chart.js</td></tr>
+  <tr><td><b>Backend</b> <span class="small">(optional)</span></td><td>Org-level analytics from anonymized metadata</td><td>FastAPI + SQLAlchemy + Postgres/SQLite</td></tr>
+</table>
+<div class="note"><b>Keystone decision:</b> the engine is <b>one source of truth</b> — the same
+  ES-module code is unit-tested by Vitest <i>and</i> bundled (esbuild) into the content script, so
+  what is tested is exactly what ships. This single choice removes an entire class of "works in
+  tests, breaks in prod" drift.</div>
+
+<!-- ───────────────────────── 3. DECISION LOG ───────────────────────── -->
+<h2 class="section pagebreak">3 · Decision log</h2>
+<p class="small">Each entry: the context, the options weighed, the decision, its pros and
+  trade-offs, and what it enables / what it signals as engineering judgment.</p>
+
+<!-- D1 -->
+<div class="dec">
+  <h3>D1 · Ship as a browser extension (not a web app or desktop proxy)</h3>
+  <p class="ctx">Context: the tool must act at the exact moment a prompt is sent, with zero change to user habits.</p>
+  <div class="decision"><b>Decision:</b> a Chrome/Chromium extension that injects into LLM pages.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Intercepts in-context — no copy/paste to a separate site (which no one does consistently).</li>
+      <li>Works across every LLM with one install.</li>
+      <li>Runs on the user's machine → privacy by construction.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>Coupled to each site's DOM (mitigated by the adapter pattern, D11).</li>
+      <li>Web Store review for public distribution.</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> product judgment — choosing the form factor that actually
+    changes behavior, not the one that's easiest to build.</div>
+</div>
+
+<!-- D2 -->
+<div class="dec">
+  <h3>D2 · Manifest V3</h3>
+  <p class="ctx">Context: MV2 is deprecated; MV3 is the current, required extension platform.</p>
+  <div class="decision"><b>Decision:</b> MV3 with a service worker, content scripts, and a strict minimal permission set.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Future-proof; required by the Web Store.</li>
+      <li>Enforced CSP (no inline/eval) → smaller attack surface.</li>
+      <li>Event-driven service worker = low idle cost.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>Service workers are ephemeral → state must live in IndexedDB, not memory.</li>
+      <li>Background can't run the engine synchronously for the content script (drove D10).</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> working within real platform constraints rather than against them.</div>
+</div>
+
+<!-- D3 -->
+<div class="dec">
+  <h3>D3 · Detection engine in plain JavaScript (ES modules), framework-free</h3>
+  <p class="ctx">Context: the engine must load instantly, run inside a content script, and be portable to Node tests.</p>
+  <div class="decision"><b>Decision:</b> vanilla ES modules with no runtime dependencies.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Zero dependencies → tiny, instant, auditable.</li>
+      <li>Same code runs in Vitest, the content script, and the demo.</li>
+      <li>No build tooling needed to reason about correctness.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>No static types (mitigated with JSDoc + an exhaustive test suite).</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> picking the right weight of tool — frameworks where they
+    pay (the dashboard), nothing where they'd only add cost (a hot-path library).</div>
+</div>
+
+<!-- D4 -->
+<div class="dec">
+  <h3>D4 · Aho-Corasick built from scratch (not sequential regex, not a library)</h3>
+  <p class="ctx">Context: scan a prompt against 20+ patterns fast enough to be invisible, and safely on hostile input.</p>
+  <div class="decision"><b>Decision:</b> a hand-built Trie + Aho-Corasick automaton (BFS failure &amp; output links) — a DFA that finds all matches in one linear pass.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li><code>O(n + m + z)</code> regardless of pattern count — vs <code>O(k·n)</code> for k sequential regexes.</li>
+      <li>DFA = no backtracking → immune to catastrophic ReDoS on adversarial input.</li>
+      <li>Demonstrates the algorithm rather than hiding it behind a dependency.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>More code to write and test than calling a library.</li>
+      <li>Anchorless PII (email/phone/card) has no literal prefix → handled by a small always-on regex set (D5).</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> core DSA depth (tries, BFS, automata, complexity analysis)
+    and security awareness — the exact thing a DLP / antivirus / IDS engine uses.</div>
+</div>
+
+<!-- D5 -->
+<div class="dec">
+  <h3>D5 · Two-stage detection: cheap candidates → strict validation</h3>
+  <p class="ctx">Context: Aho-Corasick finds candidates ("AKIA"), but a fragment isn't a confirmed key.</p>
+  <div class="decision"><b>Decision:</b> Aho-Corasick flags candidates; a strict regex confirms structure; an optional callback (e.g. the <b>Luhn checksum</b> on card numbers) cuts false positives.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Speed (fast gate) + accuracy (precise validation) — the grep / Elasticsearch pattern.</li>
+      <li>Luhn rejects random 16-digit IDs that merely look like cards.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>Two representations per pattern (anchor + regex) to keep in sync.</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> precision/recall thinking and pragmatic pipeline design.</div>
+</div>
+
+<!-- D6 -->
+<div class="dec">
+  <h3>D6 · Sub-match suppression (merge-intervals containment)</h3>
+  <p class="ctx">Context: a credit card's first 12 digits also match the Aadhaar pattern → a phantom second threat. (Found by the test suite, not in prod.)</p>
+  <div class="decision"><b>Decision:</b> drop any match fully contained inside a longer, at-least-as-severe match of a different pattern.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Honest threat lists; no double counting.</li>
+      <li>Guarded by a regression test so it can't silently return.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>A small extra pass over matches (negligible).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> debugging discipline — a real bug, root-caused and locked down with a test.</div>
+</div>
+
+<!-- D7 -->
+<div class="dec">
+  <h3>D7 · Risk scoring with a hand-built max-heap</h3>
+  <p class="ctx">Context: show the user the scariest finding first; combine multiple findings into one score.</p>
+  <div class="decision"><b>Decision:</b> push threats into a binary max-heap, pop in descending severity; composite = top score + 5×(extra threats), capped at 100; bands SAFE/CAUTION/HIGH.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Right structure for "ordered by priority" — <code>O(k log k)</code>.</li>
+      <li>Explainable, deterministic scoring.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>k is tiny, so a sort would also do — the heap is a deliberate DSA choice.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> matching data structure to problem and reasoning about it out loud.</div>
+</div>
+
+<!-- D8 -->
+<div class="dec">
+  <h3>D8 · Three-layer injection detection with a confidence threshold</h3>
+  <p class="ctx">Context: "ignore previous instructions" is an attack; "summarize the previous email" is not. One signal is never enough.</p>
+  <div class="decision"><b>Decision:</b> (1) known phrases via a dedicated Aho-Corasick, (2) structural heuristics, (3) a confidence score gated by a user sensitivity setting (LOW/MED/HIGH).</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Drives false positives down — the failure mode that makes users disable a tool.</li>
+      <li>Tunable; never hard-blocks; explains its signals.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight">
+      <li>Heuristic, not semantic — misses novel/obfuscated phrasings (future: ML layer).</li>
+    </ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> ML-adjacent precision/recall judgment and humane UX in security.</div>
+</div>
+
+<!-- D9 -->
+<div class="dec">
+  <h3>D9 · Redaction via merge-intervals</h3>
+  <p class="ctx">Context: detected spans can overlap (a Bearer token whose value is a JWT); naive replacement corrupts text.</p>
+  <div class="decision"><b>Decision:</b> sort spans, merge overlaps (keep the higher-severity placeholder), then one left-to-right slice pass.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight"><li><code>O(n log n)</code>, correct on overlaps, single rebuild pass.</li></ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Placeholder choice on collisions is a heuristic (severity-first).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> the classic merge-intervals problem applied to a real feature.</div>
+</div>
+
+<!-- D10 -->
+<div class="dec">
+  <h3>D10 · Synchronous in-page detection + esbuild single-source bundle</h3>
+  <p class="ctx">Context: <code>preventDefault()</code> must be called synchronously to stop a send — so detection must be synchronous too, but the engine "lives" as ES modules.</p>
+  <div class="decision"><b>Decision:</b> esbuild bundles the tested engine into a global the content script runs in-page; only metadata storage is async.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Reliable interception (no async race on the hot path).</li>
+      <li>One source of truth — tested code == shipped code.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>A build step (resolved with a tiny, fast esbuild script).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> understanding the event loop, browser event model, and build pipelines.</div>
+</div>
+
+<!-- D11 -->
+<div class="dec">
+  <h3>D11 · Adapter pattern registry (open/closed principle)</h3>
+  <p class="ctx">Context: each LLM site finds its input/send differently and changes its DOM over time.</p>
+  <div class="decision"><b>Decision:</b> a hash map keyed by hostname; each adapter is a config of fallback selectors. <code>O(1)</code> lookup; new LLM ≈ 5 lines.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Decouples <i>what</i> we detect from <i>where</i> — engine knows nothing about sites.</li>
+      <li>Zero overhead on unsupported sites; resilient to layout changes.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Selectors still need occasional maintenance on major redesigns.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> design patterns &amp; SOLID applied where they genuinely reduce churn.</div>
+</div>
+
+<!-- D12 -->
+<div class="dec">
+  <h3>D12 · Local storage = IndexedDB circular buffer (not localStorage)</h3>
+  <p class="ctx">Context: store usage history without blocking the UI or growing unbounded.</p>
+  <div class="decision"><b>Decision:</b> IndexedDB, bounded at 500 events with FIFO eviction; <b>metadata only</b> — never prompt text or detected values.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Async (non-blocking), 50&nbsp;MB+, indexable range queries.</li>
+      <li>Circular buffer = <code>O(1)</code> amortized, bounded memory.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>More API ceremony than localStorage (worth it).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> storage trade-offs (sync vs async), and OS-style circular-buffer thinking.</div>
+</div>
+
+<!-- D13 -->
+<div class="dec">
+  <h3>D13 · Local-first privacy + least-privilege permissions</h3>
+  <p class="ctx">Context: a security tool that exfiltrates data is itself the risk ("the privacy paradox").</p>
+  <div class="decision"><b>Decision:</b> no network in the scan path; permissions limited to <code>storage</code> + the three LLM hosts; enterprise sync is strictly opt-in to the org's own server.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Verifiable in DevTools (zero outbound requests).</li>
+      <li>Trust through least privilege and open source.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>No central analytics unless a user/org explicitly opts in.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> threat-model thinking and a principled privacy stance.</div>
+</div>
+
+<!-- D14 -->
+<div class="dec">
+  <h3>D14 · Dashboard in React + Vite + Chart.js (framework <i>here</i>, not in the engine)</h3>
+  <p class="ctx">Context: the dashboard is a stateful SPA (tabs, filters, charts) — different problem than the hot-path engine.</p>
+  <div class="decision"><b>Decision:</b> React + Vite, built to static files the extension loads; Chart.js for charts; a data layer that falls back to seeded sample data outside the extension (so it's demoable anywhere).</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Component model fits complex UI state; fast Vite builds.</li>
+      <li>Same dashboard runs on GitHub Pages with mock data.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Larger bundle than vanilla — acceptable for a non-hot-path SPA.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> right-tool-for-the-job judgment and modern frontend tooling.</div>
+</div>
+
+<!-- D15 -->
+<div class="dec">
+  <h3>D15 · Warm light visual identity (brand differentiation)</h3>
+  <p class="ctx">Context: needed a distinct, premium identity (a sibling project was already dark).</p>
+  <div class="decision"><b>Decision:</b> a warm light theme with violet accents, glassmorphism, pastel-aurora backgrounds, and subtle 3D tilt; dark theme kept as a toggle.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight"><li>Premium, modern, recognizable; strong portfolio impression.</li></ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Light themes need careful contrast tuning (handled with tokens).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> product/visual polish and CSS architecture (theming via custom properties).</div>
+</div>
+
+<!-- D16 -->
+<div class="dec">
+  <h3>D16 · Backend: FastAPI + SQLAlchemy + Pydantic; SQLite by default, Postgres for prod</h3>
+  <p class="ctx">Context: optional enterprise analytics needs a typed, documented API that runs with zero setup yet scales.</p>
+  <div class="decision"><b>Decision:</b> FastAPI (async, auto OpenAPI), Pydantic validation, SQLAlchemy 2.0; <code>DATABASE_URL</code> selects SQLite (dev) or Postgres (prod) with no code change.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Zero-setup demo (SQLite) → real DB by env var.</li>
+      <li>Free Swagger docs; request validation at the edge.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>A portable column type needed so one schema serves both DBs.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> backend/API design, ORMs, and dev/prod parity.</div>
+</div>
+
+<!-- D17 -->
+<div class="dec">
+  <h3>D17 · Backend security: hashed keys, org-scoping, composite indexes</h3>
+  <p class="ctx">Context: multi-tenant analytics must isolate orgs and never store raw secrets.</p>
+  <div class="decision"><b>Decision:</b> API keys stored as SHA-256 hashes only; every query filtered by <code>org_id</code>; composite indexes <code>(org_id, timestamp)</code>, <code>(org_id, risk_level)</code>, <code>(org_id, llm)</code>.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Tenant isolation; no plaintext credentials at rest.</li>
+      <li>Index-backed reads — one org never scans another's rows.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Indexes cost write throughput (fine for read-heavy analytics).</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> multi-tenant data modeling, indexing, and security hygiene.</div>
+</div>
+
+<!-- D18 -->
+<div class="dec">
+  <h3>D18 · Test-first, multi-layer testing</h3>
+  <p class="ctx">Context: a security tool's credibility is its test suite; false positives are the real enemy.</p>
+  <div class="decision"><b>Decision:</b> Vitest unit tests per structure; a positive/negative <b>corpus</b>; an <b>adversarial</b> suite (ReDoS, obfuscation, false-positive sweep); IndexedDB tests via <code>fake-indexeddb</code>; a perf <b>bench</b>; pytest for the API. <b>91 tests total.</b></div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Regressions caught instantly (it already caught a real UUID→Aadhaar bug).</li>
+      <li>Performance claims are measured, not asserted.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Upfront effort — repaid many times over.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> testing maturity, adversarial thinking, and benchmarking.</div>
+</div>
+
+<!-- D19 -->
+<div class="dec">
+  <h3>D19 · Deployment: GitHub Actions CI/CD + Pages; packaged extension; containerized backend</h3>
+  <p class="ctx">Context: the project must build, test, and publish itself reproducibly.</p>
+  <div class="decision"><b>Decision:</b> a CI workflow (engine + backend tests on every push) and a Pages workflow that builds and publishes the live demo + dashboard; <code>npm run package:ext</code> produces the store-ready zip; <code>Dockerfile</code> + <code>render.yaml</code> make the backend one-click deployable.</div>
+  <div class="grid2">
+    <div class="col"><div class="lbl pro">Pros</div><ul class="tight">
+      <li>Every push is verified and the demo auto-redeploys.</li>
+      <li>Reproducible builds; clear release artifact.</li>
+    </ul></div>
+    <div class="col"><div class="lbl con">Trade-offs</div><ul class="tight"><li>Chrome Web Store publishing still needs a developer account + review.</li></ul></div>
+  </div>
+  <div class="helps"><b>Demonstrates:</b> CI/CD, containerization, and a real release process.</div>
+</div>
+
+<!-- ───────────────────────── 4. LANGUAGES ───────────────────────── -->
+<h2 class="section pagebreak">4 · Language choices</h2>
+<table>
+  <tr><th>Where</th><th>Language</th><th>Why this, not the alternative</th></tr>
+  <tr><td>Detection engine, extension</td><td><b>JavaScript</b> (ES modules)</td>
+      <td>It is the only language that runs natively inside a browser content script. Plain JS keeps
+          the hot path dependency-free and lets the same code be unit-tested in Node. TypeScript was
+          weighed; JSDoc + a deep test suite gave most of the safety without a build step on the engine.</td></tr>
+  <tr><td>Dashboard</td><td><b>JavaScript</b> + JSX (React)</td>
+      <td>Shares the ecosystem; React's component model suits the SPA's state.</td></tr>
+  <tr><td>Backend</td><td><b>Python</b> (FastAPI)</td>
+      <td>Fast to build a typed, documented, async API; Pydantic validation; ubiquitous for data work.
+          Node/Express was viable but FastAPI's auto-OpenAPI and Pydantic won for an analytics service.</td></tr>
+  <tr><td>Tooling/CI</td><td><b>YAML</b> + shell + Node scripts</td>
+      <td>Standard GitHub Actions; small Node scripts for engine bundling, site assembly, and PDF/screenshots.</td></tr>
+</table>
+
+<!-- ───────────────────────── 5. DSA MAP ───────────────────────── -->
+<h2 class="section">5 · Data-structures &amp; complexity map</h2>
+<table>
+  <tr><th>Feature</th><th>Structure / algorithm</th><th>Complexity</th></tr>
+  <tr><td>Multi-pattern scan</td><td>Aho-Corasick (Trie + BFS failure links → DFA)</td><td><code>O(n + m + z)</code></td></tr>
+  <tr><td>Threat prioritization</td><td>Binary max-heap</td><td><code>O(k log k)</code></td></tr>
+  <tr><td>Per-site adapter lookup</td><td>Hash map</td><td><code>O(1)</code></td></tr>
+  <tr><td>Local event storage</td><td>Circular buffer (FIFO)</td><td><code>O(1)</code> amortized</td></tr>
+  <tr><td>Redaction / overlap merge</td><td>Merge intervals</td><td><code>O(n log n)</code></td></tr>
+  <tr><td>Candidate → validation</td><td>Two-stage filtering</td><td>—</td></tr>
+  <tr><td>Backend range queries</td><td>B-tree (composite indexes)</td><td><code>O(log n)</code></td></tr>
+</table>
+
+<!-- ───────────────────────── 6. PERFORMANCE ───────────────────────── -->
+<h2 class="section">6 · Measured performance</h2>
+<p class="small">Node 25, <code>npm run bench</code>. Linear scaling, no catastrophic backtracking.</p>
+<table>
+  <tr><th>Prompt</th><th>Size</th><th>p50</th><th>p99</th></tr>
+  <tr><td>typical prompt</td><td>~50 B</td><td>0.002 ms</td><td>0.01 ms</td></tr>
+  <tr><td>realistic mixed</td><td>~1 KB</td><td>0.023 ms</td><td>0.045 ms</td></tr>
+  <tr><td>large document</td><td>~10 KB</td><td>0.26 ms</td><td>0.38 ms</td></tr>
+  <tr><td>adversarial near-miss</td><td>~80 KB</td><td>2.4 ms</td><td>2.6 ms</td></tr>
+</table>
+
+<!-- ───────────────────────── 7. LIMITATIONS ───────────────────────── -->
+<h2 class="section">7 · Limitations &amp; future work</h2>
+<ul class="tight" style="font-size:10pt">
+  <li><b>Injection is heuristic, not semantic</b> — Unicode-homoglyph and indirect (data-borne) injection aren't covered; a future ML layer would catch novel phrasings.</li>
+  <li><b>Selector fragility</b> — major LLM redesigns can require an adapter update; planned mitigation: Playwright tests run daily against live sites.</li>
+  <li><b>Pattern updates ship with the extension</b> — a CDN-hosted remote pattern registry (cached in IndexedDB, bundled fallback) would enable minute-level updates.</li>
+  <li><b>Scale</b> — detection is free (a million parallel in-browser engines); the backend would shard <code>sync_events</code> by <code>org_id</code> and use TimescaleDB for trend data.</li>
+</ul>
+
+<!-- ───────────────────────── 8. SDE SIGNAL ───────────────────────── -->
+<h2 class="section">8 · What this demonstrates for a software-engineer role</h2>
+<table>
+  <tr><th>Competency</th><th>Evidence in SENTINEL</th></tr>
+  <tr><td>Algorithms &amp; DSA</td><td>Aho-Corasick + Trie from scratch, max-heap, merge-intervals, circular buffer — with complexity reasoning.</td></tr>
+  <tr><td>Systems thinking</td><td>MV3 service-worker/content-script split, sync-vs-async on the hot path, single-source bundling.</td></tr>
+  <tr><td>API &amp; data modeling</td><td>FastAPI + Pydantic, multi-tenant org-scoping, composite indexes, dev/prod DB parity.</td></tr>
+  <tr><td>Frontend</td><td>React + Vite SPA, Chart.js, CSS theming, accessible interaction, 3D/visual polish.</td></tr>
+  <tr><td>Security mindset</td><td>ReDoS-safe by design, least-privilege, hashed credentials, threat modeling, false-positive discipline.</td></tr>
+  <tr><td>Quality &amp; testing</td><td>91 tests across unit/corpus/adversarial/persistence + perf benchmark; a real bug found and regression-locked.</td></tr>
+  <tr><td>Delivery</td><td>CI/CD on GitHub Actions, live Pages deploy, packaged extension, containerized backend, thorough docs.</td></tr>
+  <tr><td>Judgment</td><td>Framework where it pays, none where it doesn't; warn-don't-block UX; privacy by construction.</td></tr>
+</table>
+
+<div class="note" style="margin-top:18px">
+  <b>In one line:</b> SENTINEL is a from-scratch, test-driven, security-focused full-stack system that
+  shows algorithmic depth, platform fluency, and the engineering judgment to choose the simplest tool
+  that actually solves the problem — built, measured, documented, and deployed end-to-end.
+</div>
+
+<p class="small" style="margin-top:22px;text-align:center;color:var(--muted)">
+  SENTINEL · Engineering Decision Record · github.com/alirizzzv/SENTINEL · MIT License
+</p>
+
+</body>
+</html>
