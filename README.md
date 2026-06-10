@@ -191,4 +191,4 @@ cd backend && pip install -r requirements.txt && pytest -q   # 7 backend tests
 
 ## License
 
-MIT © [alirizzzv](https://github.com/alirizzzv)
+MIT © [Ali Husain Rizvi (@alirizzzv)](https://github.com/alirizzzv) & [Nikita Chaurasia (@nikitayk)](https://github.com/nikitayk)
