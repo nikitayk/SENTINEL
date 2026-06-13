@@ -143,17 +143,27 @@ only anonymized metadata in a local 500-event ring buffer.
 
 ## Install & use
 
-Full guide: **[INSTALL.md](INSTALL.md)**.
+Works the same on **macOS, Windows, and Linux** — it's a Chromium extension, so the OS doesn't
+change how you use it. Full step-by-step guide: **[INSTALL.md](INSTALL.md)**.
+
+**Prerequisites (same on every OS):** [Node.js 18+](https://nodejs.org/en/download) ·
+[Git](https://git-scm.com/downloads) · a Chromium browser —
+[Chrome](https://www.google.com/chrome/), or the **Edge** that ships with Windows.
 
 ```bash
 git clone https://github.com/alirizzzv/SENTINEL.git
 cd SENTINEL && npm install && npm run build
 ```
 
-Then: Chrome → `chrome://extensions` → **Developer mode** → **Load unpacked** → pick `extension/`.
+These three commands are byte-for-byte identical on Mac and Windows. Then load the built
+`extension/` folder (also identical on both):
+
+- **Chrome:** open `chrome://extensions` &nbsp;·&nbsp; **Edge (Windows default):** open `edge://extensions`
+- Toggle **Developer mode** on → click **Load unpacked** → select the **`extension/`** folder.
+
 Open an LLM, type a prompt with `AKIAIOSFODNN7EXAMPLE`, press Enter — the modal appears.
 
-> Try it instantly with no install at the **[live demo](https://alirizzzv.github.io/SENTINEL/demo/)**.
+> No install? Try the **[live demo](https://alirizzzv.github.io/SENTINEL/demo/)** in any browser.
 
 ## Tech stack
 
@@ -184,7 +194,7 @@ docs/          ARCHITECTURE.md deep dive + screenshots
 npm test            # 84 engine/UI tests (Vitest)
 npm run bench       # performance benchmark
 npm run build       # engine bundle (esbuild) + dashboard (Vite)
-npm run package:ext # -> sentinel-extension.zip
+npm run package:ext # -> sentinel-extension.zip  (macOS/Linux — needs the `zip` CLI; Windows: see INSTALL.md)
 cd backend && pip install -r requirements.txt && pytest -q   # 7 backend tests
 ```
 
