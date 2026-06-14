@@ -162,7 +162,7 @@ only anonymized metadata in a local 500-event ring buffer.
 
 ### ⚡ Option 1 — Just try it (0 minutes, no install)
 
-Open the **[live demo](https://alirizzzv.github.io/SENTINEL/demo/)** in any browser, paste a
+Open the 🔗 **[Live demo & dashboard →](https://nikitayk.github.io/SENTINEL/)** in any browser, paste a
 fake secret like `AKIAIOSFODNN7EXAMPLE`, and watch SENTINEL catch it. Best way to see it in
 action in 10 seconds.
 
@@ -175,7 +175,7 @@ Chromium browser ([Chrome](https://www.google.com/chrome/), or the **Edge** alre
 **Step 1 — Get the code and build it.** Open Terminal (Mac) or PowerShell (Windows) and run:
 
 ```bash
-git clone https://github.com/alirizzzv/SENTINEL.git
+git clone https://github.com/nikitayk/SENTINEL.git
 cd SENTINEL
 npm install
 npm run build
