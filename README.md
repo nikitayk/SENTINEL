@@ -14,7 +14,8 @@ stored but anonymized metadata.**
 [![Privacy](https://img.shields.io/badge/privacy-local--first-0fb27f?style=flat-square)](#-privacy)
 [![License](https://img.shields.io/badge/license-MIT-1b2038?style=flat-square)](LICENSE)
 
-🔗 **[Live demo & dashboard →](https://alirizzzv.github.io/SENTINEL/)**
+🔗 **[Live demo & dashboard →](https://nikitayk.github.io/SENTINEL/
+)**
 
 </div>
 
